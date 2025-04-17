@@ -1,0 +1,1162 @@
+Microsoft Windows [version 10.0.19045.5608]
+(c) Microsoft Corporation. Tous droits réservés.
+
+C:\Users\XPRISTO>docker run --name mon-cassandra -d -p 9042:9042 cassandra
+docker: error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+
+Run 'docker run --help' for more information
+
+C:\Users\XPRISTO>docker run --name mon-cassandra -d -p 9042:9042 cassandra
+Unable to find image 'cassandra:latest' locally
+latest: Pulling from library/cassandra
+3672c4590cb9: Pull complete
+4615ed3a3407: Pull complete
+a98a9ced27c2: Pull complete
+61ee76b96881: Pull complete
+e4812c6119a3: Pull complete
+9cb31e2e37ea: Pull complete
+25fdfc9faee8: Pull complete
+b682cc54ed35: Pull complete
+13876c96bdc5: Pull complete
+39ba2eb345fd: Pull complete
+Digest: sha256:70b40a2025d450f7865c5ec6f1ebea13108166f81fe41462069690cb4d9690f2
+Status: Downloaded newer image for cassandra:latest
+4ea9b5abf9b6c8ccfa6138f065c13fe41bd5428effa81ad7b502240fc9bd38d9
+
+C:\Users\XPRISTO>docker ps
+CONTAINER ID   IMAGE       COMMAND                  CREATED          STATUS          PORTS                                                       NAMES
+4ea9b5abf9b6   cassandra   "docker-entrypoint.s…"   49 seconds ago   Up 48 seconds   7000-7001/tcp, 7199/tcp, 9160/tcp, 0.0.0.0:9042->9042/tcp   mon-cassandra
+
+C:\Users\XPRISTO>docker exec -it mon-cassandra cqlsh
+Connected to Test Cluster at 127.0.0.1:9042
+[cqlsh 6.2.0 | Cassandra 5.0.3 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE IF NOT EXISTS resto_NY
+   ... WITH REPLICATION ={'class':'SimpleStrategy','replication_factor':1};
+cqlsh> USE resto
+   ...
+cqlsh> USE resto_NY;
+cqlsh:resto_ny> CREATE TABLE Restaurant(id INT,name VARCHAR,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_Restaurant_cuisine ON Restaurant (CuisineType);
+cqlsh:resto_ny> CREATE TABLE Inspection(idRestaurant INT,InspectionDate date,ViolationCode VARCHAR,ViolationDescription VARCHAR,CriticalFlag VARCHAR,Score INT,Grade VARCHAR,PRIMARY KEY (idRestaurant,InspectionDate));   CREATE INDEX fk_Inspection_Restaurant ON Inspection (Grade);
+cqlsh:resto_ny> DESC Restaurant; DESC Inspection;
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+
+CREATE TABLE resto_ny.inspection (
+    idrestaurant int,
+    inspectiondate date,
+    criticalflag text,
+    grade text,
+    score int,
+    violationcode text,
+    violationdescription text,
+    PRIMARY KEY (idrestaurant, inspectiondate)
+) WITH CLUSTERING ORDER BY (inspectiondate ASC)
+    AND additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_inspection_restaurant ON resto_ny.inspection (grade);
+cqlsh:resto_ny>
+cqlsh:resto_ny> COPY Restaurant (id,name,borough,buildingnum,street,zipcode,phne,cuisinetype) FROM '/restaurant,csv' WITH DELIMITER=',';
+Using 7 child processes
+cqlsh:resto_ny> COPY Restaurant (id,name,borough,buildingnum,street,zipcode,phne,cuisinetype) FROM '/restaurant,csv' WITcqlsh:resto_ny> COPY Inspection (idRestuarant,inspectiondate,violationcode,violationdescription,criticalflag,score,grade) FROM '/restaurant_inspections,csv' WITH DELIMITER=',';
+Using 7 child processes
+Invalid column name idrestuarant
+cqlsh:resto_ny> ls/*.csv
+            ...
+            ...
+            ...
+cqlsh:resto_ny> SELECT count(*) FROM Restaurant; SELECT count (*) FROM Inspection;
+
+ count
+-------
+     0
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+
+ count
+-------
+     0
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:resto_ny> COPY Restaurant(id,name,BuildingNum,street,ZipCode,Phone,CuisineType)) FROM 'restaurants.csv' WITH DELIMITER=',' ;
+Improper COPY command.
+cqlsh:resto_ny> COPY Restaurant(id,name,BuildingNum,street,ZipCode,Phone,CuisineType)) FROM '/restaurants.csv' WITH DELIMITER=',' ;
+Improper COPY command.
+cqlsh:resto_ny> COPY Restaurant(id,name,BuildingNum,street,ZipCode,Phone,CuisineType)) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Improper COPY command.
+cqlsh:resto_ny> COPY Restaurant(id,name,BuildingNum,street,ZipCode,Phone,CuisineType)) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Improper COPY command.
+cqlsh:resto_ny> COPY Restaurant(id,name,BuildingNum,street,ZipCode,Phone,CuisineType) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Using 7 child processes
+
+Starting copy of resto_ny.restaurant with columns [id, name, buildingnum, street, zipcode, phone, cuisinetype].
+Failed to import 623 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to import 5000 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to import 5000 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to import 5000 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to import 5000 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to import 5000 rows: ParseError - Invalid row length 8 should be 7,  given up without retries
+Failed to process 25623 rows; failed rows written to import_resto_ny_restaurant.err
+Processed: 25623 rows; Rate:   24074 rows/s; Avg. rate:   36967 rows/s
+0 rows imported from 1 files in 0.693 seconds (0 skipped).
+cqlsh:resto_ny> COPY Restaurant(id,name,brough,BuildingNum,street,ZipCode,Phone,CuisineType) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Using 7 child processes
+Invalid column name brough
+cqlsh:resto_ny> DESC Restaurant; DESC Inspection;
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+
+CREATE TABLE resto_ny.inspection (
+    idrestaurant int,
+    inspectiondate date,
+    criticalflag text,
+    grade text,
+    score int,
+    violationcode text,
+    violationdescription text,
+    PRIMARY KEY (idrestaurant, inspectiondate)
+) WITH CLUSTERING ORDER BY (inspectiondate ASC)
+    AND additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_inspection_restaurant ON resto_ny.inspection (grade);
+cqlsh:resto_ny> CREATE TABLE restaurant(id INT,name VARCHAR,borough,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_Restaurant_cuisine ON Restaurant (CuisineType);
+SyntaxException: line 1:51 no viable alternative at input ',' (...(id INT,name VARCHAR,borough[,]...)
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Index 'fk_restaurant_cuisine' already exists"
+cqlsh:resto_ny> CREATE TABLE restaurant(id INT,name VARCHAR,borough VARCHAR,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_Restaurant_cuisine ON Restaurant (CuisineType);
+AlreadyExists: Table 'resto_ny.restaurant' already exists
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Index 'fk_restaurant_cuisine' already exists"
+cqlsh:resto_ny> CREATE TABLE restaurant(id INT,name VARCHAR,borough VARCHAR,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_Restaurant_cuisine ON restaurant (CuisineType);
+AlreadyExists: Table 'resto_ny.restaurant' already exists
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Index 'fk_restaurant_cuisine' already exists"
+cqlsh:resto_ny> CREATE TABLE restaurant(id INT,name VARCHAR,borough VARCHAR,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_restaurant_cuisine ON restaurant (CuisineType);
+AlreadyExists: Table 'resto_ny.restaurant' already exists
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Index 'fk_restaurant_cuisine' already exists"
+cqlsh:resto_ny> DESC Restaurant; DESC Inspection;
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+
+CREATE TABLE resto_ny.inspection (
+    idrestaurant int,
+    inspectiondate date,
+    criticalflag text,
+    grade text,
+    score int,
+    violationcode text,
+    violationdescription text,
+    PRIMARY KEY (idrestaurant, inspectiondate)
+) WITH CLUSTERING ORDER BY (inspectiondate ASC)
+    AND additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_inspection_restaurant ON resto_ny.inspection (grade);
+cqlsh:resto_ny> ALTER TABLE Restaurant ADD borough VARCHAR;
+cqlsh:resto_ny> DESC Restaurant
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    borough text,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+cqlsh:resto_ny> DROP TABLE IF EXISTS Restaurant;
+cqlsh:resto_ny> DESC Restaurant
+'restaurant' not found in keyspace 'resto_ny'
+cqlsh:resto_ny> CREATE TABLE Restaurant(id INT,name VARCHAR,borough VARCHAR,BuildingNum VARCHAR,street VARCHAR,ZipCode INT,Phone TEXT,CuisineType VARCHAR,PRIMARY KEY (id));   CREATE INDEX fk_Restaurant_cuisine ON Restaurant (CuisineType);
+cqlsh:resto_ny> DESC Restaurant
+
+CREATE TABLE resto_ny.restaurant (
+    id int PRIMARY KEY,
+    borough text,
+    buildingnum text,
+    cuisinetype text,
+    name text,
+    phone text,
+    street text,
+    zipcode int
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+
+CREATE INDEX fk_restaurant_cuisine ON resto_ny.restaurant (cuisinetype);
+cqlsh:resto_ny> COPY Restaurant(id,name,brough,BuildingNum,street,ZipCode,Phone,CuisineType) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Using 7 child processes
+Invalid column name brough
+cqlsh:resto_ny> COPY Restaurant(id,name,borough,BuildingNum,street,ZipCode,Phone,CuisineType) FROM '/restaurants.csv' WITH DELIMITER=',' AND HEADER=TRUE;
+Using 7 child processes
+
+Starting copy of resto_ny.restaurant with columns [id, name, borough, buildingnum, street, zipcode, phone, cuisinetype].Processed: 25623 rows; Rate:   16050 rows/s; Avg. rate:   17587 rows/s
+25623 rows imported from 1 files in 0 day, 0 hour, 0 minute, and 1.457 seconds (0 skipped).
+cqlsh:resto_ny> COPY Inspection(idRestaurant,InspectionDate,ViolationCode,ViolationDescription,CriticalFlag,Score,Grade) FROM'/restaurant_inspection.csv WITH DELIMITER=',';
+            ...
+cqlsh:resto_ny> COPY Inspection(idRestaurant,InspectionDate,ViolationCode,ViolationDescription,CriticalFlag,Score,Grade) FROM'/restaurant_inspection.csv' WITH DELIMITER=',';
+Using 7 child processes
+
+Starting copy of resto_ny.inspection with columns [idrestaurant, inspectiondate, violationcode, violationdescription, criticalflag, score, grade].
+Failed to import 0 rows: OSError - Can't open '/restaurant_inspection.csv' for reading: no matching file found,  given up after 1 attempts
+Processed: 0 rows; Rate:       0 rows/s; Avg. rate:       0 rows/s
+0 rows imported from 0 files in 0.333 seconds (0 skipped).
+cqlsh:resto_ny> COPY Inspection(idRestaurant,InspectionDate,ViolationCode,ViolationDescription,CriticalFlag,Score,Grade) FROM'/restaurant_inspection.csv' WITH DELIMITER=',';
+Using 7 child processes
+
+Starting copy of resto_ny.inspection with columns [idrestaurant, inspectiondate, violationcode, violationdescription, criticalflag, score, grade].
+Failed to import 0 rows: OSError - Can't open '/restaurant_inspection.csv' for reading: no matching file found,  given up after 1 attempts
+Processed: 0 rows; Rate:       0 rows/s; Avg. rate:       0 rows/s
+0 rows imported from 0 files in 0.272 seconds (0 skipped).
+cqlsh:resto_ny> COPY Inspection(idRestaurant,InspectionDate,ViolationCode,ViolationDescription,CriticalFlag,Score,Grade) FROM'/restaurants_inspections.csv' WITH DELIMITER=',';
+Using 7 child processes
+
+Starting copy of resto_ny.inspection with columns [idrestaurant, inspectiondate, violationcode, violationdescription, criticalflag, score, grade].
+Processed: 441712 rows; Rate:   10180 rows/s; Avg. rate:   21436 rows/s
+441712 rows imported from 1 files in 0 day, 0 hour, 0 minute, and 20.606 seconds (0 skipped).
+cqlsh:resto_ny> SELECT count(*) FROM Restaurant; SELECT count (*) FROM Inspection;
+
+ count
+-------
+ 25623
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+
+ count
+--------
+ 149818
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+cqlsh:resto_ny> SELECT * FROM Restaurant;
+
+ id       | borough       | buildingnum | cuisinetype                                                      | name                                             | phone      | street                      | zipcode
+----------+---------------+-------------+------------------------------------------------------------------+--------------------------------------------------+------------+-----------------------------+---------
+ 40786914 | STATEN ISLAND |        1465 |                                                         American |                                    BOSTON MARKET | 7188151198 |               FOREST AVENUE |   10302
+ 40366162 |        QUEENS |       11909 |                                                         American |                                 LENIHAN'S SALOON | 7188469770 |             ATLANTIC AVENUE |   11418
+ 41692194 |     MANHATTAN |         360 |                                                             Thai |                                    BANGKOK HOUSE | 2125415943 |            WEST   46 STREET |   10036
+ 41430956 |      BROOKLYN |        2225 |                                                        Caribbean |                                TJ'S TASTY CORNER | 7184844783 |               TILDEN AVENUE |   11226
+ 41395531 |        QUEENS |         126 |                                                         American |                                NATHAN'S HOT DOGS | 7185958100 |            ROOSEVELT AVENUE |   11368
+ 50005384 | STATEN ISLAND |         271 |                                                          Chinese |                                      YUMMY YUMMY | 7184425888 |           PORT RICHMOND AVE |   10302
+ 50005858 |      BROOKLYN |        6005 |                                                          Chinese |                                   KING'S KITCHEN | 7188531388 |          FORT HAMILTON PKWY |   11219
+ 40962612 |     MANHATTAN |         164 |                                                          Italian |                                            CESCA | 2127876300 |            WEST   75 STREET |   10023
+ 40995404 |     MANHATTAN |        4195 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |                EL GUANACO RESTAURANT & PUPUSERIA | 2127955400 |                    BROADWAY |   10033
+ 40368763 |     MANHATTAN |         111 |                                                         American |                                        THE BROOK | 2127537020 |            EAST   54 STREET |   10022
+ 50019260 |      BROOKLYN |         604 |                                                     Delicatessen |                               LEO'S DELI & GRILL | 3474629400 |                  E 102ND ST |   11236
+ 50015473 |     MANHATTAN |          90 |                                                         Japanese |                        KAEDE JAPANESE RESTAURANT | 2127668686 |                 CHAMBERS ST |   10007
+ 41704055 |         BRONX |        1788 |                                                            Pizza |                                      JOHNS PIZZA | 7188220201 |          WESTCHESTER AVENUE |   10472
+ 40860476 |        QUEENS |        9109 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |                           RICE & BEANS LECHONERA | 7187400265 |       SPRINGFIELD BOULEVARD |   11428
+ 50044741 | STATEN ISLAND |        1203 |                                                           Indian |                                   INDIAN EXPRESS | 7184426673 |                  HYLAN BLVD |   10305
+ 41630020 |     MANHATTAN |         341 |                                                      Continental |                         DOUBLETREE GREENHOUSE 36 | 2125428990 |            WEST   36 STREET |   10018
+ 41569081 |         BRONX |        2002 |                                                          Mexican |                                         VIDAELVA | 7186841333 |      CROSS BRONX EXPRESSWAY |   10472
+ 50048575 |        QUEENS |       16120 |                                                          Chinese |                        TK VILLAGE BAKERY COMPANY | 7183590015 |               NORTHERN BLVD |   11358
+ 41569184 |     MANHATTAN |         321 |                                                         American |                                              BKB | 2128611038 |            EAST   73 STREET |   10021
+ 41710788 |        QUEENS |      136-20 |                                                            Asian |                                           SPRING | 7183958073 |                   38 AVENUE |   11354
+ 41443240 |     MANHATTAN |          40 |                                                           Donuts |                                   DUNKIN' DONUTS | 2122542055 |           UNION SQUARE EAST |   10003
+ 41517701 |         BRONX |        5981 |                                                          Chicken |                                     PLANET WINGS | 7188849464 |                    BROADWAY |   10471
+ 50015747 |         BRONX |        3035 |                                                          Chinese |                    NEW CHINA RESTAURANT WANG INC | 7182922493 |                     3RD AVE |   10455
+ 50009349 |      BROOKLYN |        1708 |                                                            Asian |                                 JIN SUSHI & THAI | 7183363887 |                   E 16TH ST |   11229
+ 50011687 |        QUEENS |        1641 |                                                 Chinese/Japanese |                           JADE ASIAN EXPRESS INC | 7183818878 |                 WOODBINE ST |   11385
+ 41483427 |     MANHATTAN |        1109 |                                                          Italian |                                TIELLA RESTAURANT | 2125880100 |                    1 AVENUE |   10065
+ 41615509 |     MANHATTAN |         107 |                                   Sandwiches/Salads/Mixed Buffet |                                           SUBWAY | 2122217003 |            WEST   37 STREET |   10018
+ 41450562 |     MANHATTAN |         924 |                                                           French |                                          MATISSE | 2125469300 |                    2 AVENUE |   10022
+ 50037966 |         BRONX |        2449 |                                                          Spanish |                                     FRESH FRUTII | 3472718932 |                 CRESTON AVE |   10468
+ 40380628 |        QUEENS |        6568 |                                                    Pizza/Italian |                                    PISA PIZZERIA | 7183816368 |               MYRTLE AVENUE |   11385
+ 41376760 |     MANHATTAN |         187 |                                                           Bakery |                                PATISSERIE CLAUDE | 2122555911 |            WEST    4 STREET |   10014
+ 41332375 |     MANHATTAN |         233 |                                  Ice Cream, Gelato, Yogurt, Ices |                                             GROM | 2122061738 |             BLEECKER STREET |   10014
+ 41231284 |     MANHATTAN |         173 |                                                         American |                                        WESTVILLE | 2126772033 |                    AVENUE A |   10009
+ 41428195 |        QUEENS |       11136 |                                                            Pizza |                                 FARMERS PIZZERIA | 7184641500 |           FARMERS BOULEVARD |   11412
+ 50005784 |        QUEENS |        9706 |                                                          Spanish |     ORGANIC FOOD, NATURAL JUICES AND COFFEE SHOP | 9174201425 |               ROOSEVELT AVE |   11368
+ 41409366 |     MANHATTAN |          11 |                                                    Jewish/Kosher |                                          CAFE 11 | 2124252233 |                    BROADWAY |   10004
+ 50052502 |     MANHATTAN |         150 |                                                         American | COMMUNITY DINING HALL AT MCKEON HALL FORDAM UNIV | 6463465110 |                   W 62ND ST |   10023
+ 50001970 |      BROOKLYN |        1591 |                                                         American |                              CROWN FRIED CHICKEN | 7184536433 |                    BROADWAY |   11207
+ 50037419 |      BROOKLYN |           1 |                                                 CafÃ©/Coffee/Tea |                                  BROOKLYN CAFE 1 | 7184851111 |               BROOKDALE PLZ |   11212
+ 50046836 |        QUEENS |        6507 |                                                         American |                            MINT JUICERY AND YOGO | 3478134357 |              WOODHAVEN BLVD |   11374
+ 41642313 |         BRONX |        155B |                                                           Bakery |                                   LA ROSA BAKERY | 7182934153 |            EAST  170 STREET |   10452
+ 40388419 |     MANHATTAN |        2859 |                                                            Pizza |                         FAMOUS FAMIGLIA PIZZERIA | 2128651234 |                    BROADWAY |   10025
+ 41229180 |     MANHATTAN |         186 |                                                    Pizza/Italian |                               FRANCESCO PIZZERIA | 2127210066 |             COLUMBUS AVENUE |   10023
+ 50008086 |        QUEENS |       14615 |                                                          Chinese |                                 NO. 1 YUMMY TACO | 7188481288 |               ROCKAWAY BLVD |   11436
+ 41306360 |      BROOKLYN |        3325 |                                                          Mexican |                             CRESCENT COFFEE SHOP | 7182773780 |               FULTON STREET |   11208
+ 50046219 |      BROOKLYN |         492 |                                                    Mediterranean |                      LA ROYALE BEER BURGER HOUSE | 3476894378 |                     5TH AVE |   11215
+ 41298198 |        QUEENS |       13618 |                                                           Bakery |                                    FAY DA BAKERY | 7183211759 |                   39 AVENUE |   11354
+ 50033104 |     MANHATTAN |          83 |                                                         American |                                HILLTOP PERK DELI | 6466435187 |                   HAVEN AVE |   10032
+ 41685325 |      BROOKLYN |         615 |                                                         American |                               CONNECTICUT MUFFIN | 3473053872 |             NOSTRAND AVENUE |   11216
+ 41049219 |         BRONX |         941 |                                                          Chicken |                        KENNEDY CHICKEN AND PIZZA | 7188602295 |            INTERVALE AVENUE |   10459
+ 41567020 |      BROOKLYN |          67 |                                                           Salads |                              GREENSTREETS SALADS | 3474057956 |               IRVING AVENUE |   11237
+ 50050334 |     MANHATTAN |           1 |                                                            Other |                               BLUE BOTTLE COFFEE | 5106533394 |             ROCKEFELLER PLZ |   10020
+ 50041073 |      BROOKLYN |         251 |                                                         American |                                        THE TOPAZ | 3477707217 |                BUSHWICK AVE |   11206
+ 50033938 |     MANHATTAN |         109 |                                                          Mexican |                                     R & J LOUNGE | 6467855832 |                  E 116TH ST |   10029
+ 41583458 |     MANHATTAN |         780 |                                                           Bakery |                               SPRINKLES CUPCAKES | 2122078375 |            LEXINGTON AVENUE |   10065
+ 40969326 |      BROOKLYN |         369 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |                                   LA GUARIDA BAR | 9179518643 |                   36 STREET |   11232
+ 50035012 |      BROOKLYN |       1876A |                                                        Soul Food |                               MAMA ROZ SOUL FOOD | 3477898135 |                   FULTON ST |   11233
+ 41688653 |     MANHATTAN |           1 |                                                 CafÃ©/Coffee/Tea |                                  STARBUCK COFFEE | 2123461283 |                  PACE PLAZA |   10038
+ 50054647 |      BROOKLYN |         807 |                                                           Bakery |                                 HONG KONG BAKERY | 9174557883 |                     42ND ST |   11232
+ 50032618 |        QUEENS |        4108 |                                                           Korean |                           DAEJI DAEJI KOREAN BBQ | 7188866797 |                    149TH PL |   11355
+ 50036072 |     MANHATTAN |        1351 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |                                LUISA CHIMICHURRY | 2127811489 |          SAINT NICHOLAS AVE |   10033
+ 40700724 |     MANHATTAN |         165 |                                                          Italian |                                   SCALINI FEDELI | 2125280400 |                DUANE STREET |   10013
+ 50046157 |        QUEENS |        9245 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |      GREEN APPLE FOOD COURT /LATIN MEXICAN GRILL | 7186588887 |           GUY R BREWER BLVD |   11433
+ 41250691 |     MANHATTAN |         421 |                                                       Sandwiches |                                           SUBWAY | 2125322720 |                    2 AVENUE |   10010
+ 40371807 |        QUEENS |        4619 |                                                          Italian |                 AUNT BELLA'S REST OF LITTLE NECK | 7182254700 |            MARATHON PARKWAY |   11362
+ 41574344 |     MANHATTAN |          28 |                                                           French |                                          ALMANAC | 2129327566 |              7 AVENUE SOUTH |   10014
+ 41495616 |      BROOKLYN |         NKA |                                                         American |                       BROOKLYN BRIDGE GARDEN BAR | 3474248211 |        BROOKLYN BRIDGE PARK |   11201
+ 50037658 |     MANHATTAN |        1613 |                                                    Mediterranean |                                   HUMMUS KITCHEN | 2129880347 |                     2ND AVE |   10028
+ 41679915 | STATEN ISLAND |         272 |                                                          Mexican |                                 LA NUEVA CANASTA | 3474249647 |                   SAND LANE |   10305
+ 50048338 |        QUEENS |       13822 |                                                          Chinese |                                    DRAGON PALACE | 7187121300 |                FARMERS BLVD |   11434
+ 50007940 |     MANHATTAN |         225 |                                                         American |                                  LITTLE MUENSTER | 2127860186 |                  LIBERTY ST |   10281
+ 50013363 |         BRONX |        4513 |                                                         American |                        KELLY COMMONS MARKETPLACE | 7188627737 |      MANHATTAN COLLEGE PKWY |   10471
+ 40744238 |         BRONX |         151 | Latin (Cuban, Dominican, Puerto Rican, South & Central American) |                           PICANTERIA EL BOTECITO | 7184017366 |          BRUCKNER BOULEVARD |   10454
+ 50012829 |      BROOKLYN |         232 |                                                 CafÃ©/Coffee/Tea |                                      THE CANTINE | 9175737765 |                      3RD ST |   11215
+ 40608422 |         BRONX |           1 |                                                         American |                        BEDFORD CAFE & RESTAURANT | 7183653416 | EAST BEDFORD PARK BOULEVARD |   10468
+ 41561546 |        QUEENS |         905 |                                                           Bakery |                                    RUDY'S BAKERY | 7188215890 |               SENECA AVENUE |   11385
+ 41576416 |     MANHATTAN |         237 |                                                         Japanese |                                            JUKAI | 2125889788 |            EAST   53 STREET |   10022
+ 40958136 |        QUEENS |           0 |                                                         American |                           SIX BLOCKS BAKERY CAFE | 7186519494 |           LAGUARDIA AIRPORT |   11369
+ 50007413 |        QUEENS |       16519 |                                                           Korean |                                FLUSHING BANGGANE | 7187622799 |               NORTHERN BLVD |   11358
+ 50009019 |     MANHATTAN |        1306 |                                                           Salads |                                       JUST SALAD | 2122441111 |                     1ST AVE |   10021
+ 50000419 |     MANHATTAN |       43-45 |                                                         American |                                      NATUREWORKS | 2123333020 |                 W 55 STREET |   10019
+ 41283984 | STATEN ISLAND |         150 |                                                       Sandwiches |                                           SUBWAY | 7187271777 |                  BAY STREET |   10301
+ 40364576 |     MANHATTAN |         311 |                                                           French |                                     TOUT VA BIEN | 2122650190 |            WEST   51 STREET |   10019
+ 40378774 |        QUEENS |        6967 |                                                         American |                                       FAME DINER | 7184784674 |                GRAND AVENUE |   11378
+ 50049009 |     MANHATTAN |          42 |                                                            Other |                        RESTAURANT ASSOCIATES LLC | 3477582694 |                    BROADWAY |   10004
+ 50049046 |        QUEENS |       15412 |                                                           Indian |                                     NAAN & GRILL | 7184134842 |               ROCKAWAY BLVD |   11434
+ 41718215 |     MANHATTAN |         251 |                                                         Japanese |                                   YAKITORI TOTTO | 2122454555 |            WEST   55 STREET |   10019
+ 50000095 |     MANHATTAN |         255 |                                                          Chinese |                          NEW JING HUI RESTAURANT | 2122838118 |                 W. 148TH ST |   10039
+ 50044781 |     MANHATTAN |         328 |                                                 CafÃ©/Coffee/Tea |                                 TERREMOTO COFFEE | 2122434300 |                   W 15TH ST |   10011
+ 50056581 |      BROOKLYN |         224 |                                                            Other |                                    THE GUMBO BRO | 2124016944 |                ATLANTIC AVE |   11201
+ 41362423 |        QUEENS |           0 |                                                         American |                      CIBO EXPRESS GOURMET MARKET | 6464835087 |           JFK INTL. AIRPORT |   11430
+ 41252214 |     MANHATTAN |         310 |                                                         American |                                       LAZY POINT | 2124637406 |               SPRING STREET |   10013
+ 41708947 |        QUEENS |        4914 |                                                         American |                         SECRETS GENTLEMAN'S CLUB | 6463533242 |            QUEENS BOULEVARD |   11377
+ 41350559 |         BRONX |          60 |                                                       Hamburgers |           BURGER KING, POPEYES LOUISIANA KITCHEN | 7188223678 |           METROPOLITAN OVAL |   10462
+ 50043150 |     MANHATTAN |         609 |                                                       Sandwiches |                                BETWEEN THE BREAD | 2127651687 |                   W 27TH ST |   10001
+ 50041565 |        QUEENS |        3125 |                                                            Pizza |                                 Sicilia Pizzeria | 3477068525 |                 THOMSON AVE |   11101
+ 50039126 |      BROOKLYN |         201 |                                  Ice Cream, Gelato, Yogurt, Ices |                                DAVEY'S ICE CREAM | 6462458414 |                 BEDFORD AVE |   11211
+ 41186217 |     MANHATTAN |          90 |                                                         American |                                   THE LITTLE OWL | 2127414695 |              BEDFORD STREET |   10014
+ 50044421 |     MANHATTAN |        4961 |                                                         Armenian |                                      GARDEN CAFE | 3478658750 |                    BROADWAY |   10034
+ 50051009 |         BRONX |        2367 |                                                    Pizza/Italian |                               BEST ITALIAN PIZZA | 7189336780 |             GRAND CONCOURSE |   10468
+
+---MORE---
+cqlsh:resto_ny> SELECT name FROM Restaurant;
+
+ name
+--------------------------------------------------
+                                    BOSTON MARKET
+                                 LENIHAN'S SALOON
+                                    BANGKOK HOUSE
+                                TJ'S TASTY CORNER
+                                NATHAN'S HOT DOGS
+                                      YUMMY YUMMY
+                                   KING'S KITCHEN
+                                            CESCA
+                EL GUANACO RESTAURANT & PUPUSERIA
+                                        THE BROOK
+                               LEO'S DELI & GRILL
+                        KAEDE JAPANESE RESTAURANT
+                                      JOHNS PIZZA
+                           RICE & BEANS LECHONERA
+                                   INDIAN EXPRESS
+                         DOUBLETREE GREENHOUSE 36
+                                         VIDAELVA
+                        TK VILLAGE BAKERY COMPANY
+                                              BKB
+                                           SPRING
+                                   DUNKIN' DONUTS
+                                     PLANET WINGS
+                    NEW CHINA RESTAURANT WANG INC
+                                 JIN SUSHI & THAI
+                           JADE ASIAN EXPRESS INC
+                                TIELLA RESTAURANT
+                                           SUBWAY
+                                          MATISSE
+                                     FRESH FRUTII
+                                    PISA PIZZERIA
+                                PATISSERIE CLAUDE
+                                             GROM
+                                        WESTVILLE
+                                 FARMERS PIZZERIA
+     ORGANIC FOOD, NATURAL JUICES AND COFFEE SHOP
+                                          CAFE 11
+ COMMUNITY DINING HALL AT MCKEON HALL FORDAM UNIV
+                              CROWN FRIED CHICKEN
+                                  BROOKLYN CAFE 1
+                            MINT JUICERY AND YOGO
+                                   LA ROSA BAKERY
+                         FAMOUS FAMIGLIA PIZZERIA
+                               FRANCESCO PIZZERIA
+                                 NO. 1 YUMMY TACO
+                             CRESCENT COFFEE SHOP
+                      LA ROYALE BEER BURGER HOUSE
+                                    FAY DA BAKERY
+                                HILLTOP PERK DELI
+                               CONNECTICUT MUFFIN
+                        KENNEDY CHICKEN AND PIZZA
+                              GREENSTREETS SALADS
+                               BLUE BOTTLE COFFEE
+                                        THE TOPAZ
+                                     R & J LOUNGE
+                               SPRINKLES CUPCAKES
+                                   LA GUARIDA BAR
+                               MAMA ROZ SOUL FOOD
+                                  STARBUCK COFFEE
+                                 HONG KONG BAKERY
+                           DAEJI DAEJI KOREAN BBQ
+                                LUISA CHIMICHURRY
+                                   SCALINI FEDELI
+      GREEN APPLE FOOD COURT /LATIN MEXICAN GRILL
+                                           SUBWAY
+                 AUNT BELLA'S REST OF LITTLE NECK
+                                          ALMANAC
+                       BROOKLYN BRIDGE GARDEN BAR
+                                   HUMMUS KITCHEN
+                                 LA NUEVA CANASTA
+                                    DRAGON PALACE
+                                  LITTLE MUENSTER
+                        KELLY COMMONS MARKETPLACE
+                           PICANTERIA EL BOTECITO
+                                      THE CANTINE
+                        BEDFORD CAFE & RESTAURANT
+                                    RUDY'S BAKERY
+                                            JUKAI
+                           SIX BLOCKS BAKERY CAFE
+                                FLUSHING BANGGANE
+                                       JUST SALAD
+                                      NATUREWORKS
+                                           SUBWAY
+                                     TOUT VA BIEN
+                                       FAME DINER
+                        RESTAURANT ASSOCIATES LLC
+                                     NAAN & GRILL
+                                   YAKITORI TOTTO
+                          NEW JING HUI RESTAURANT
+                                 TERREMOTO COFFEE
+                                    THE GUMBO BRO
+                      CIBO EXPRESS GOURMET MARKET
+                                       LAZY POINT
+                         SECRETS GENTLEMAN'S CLUB
+           BURGER KING, POPEYES LOUISIANA KITCHEN
+                                BETWEEN THE BREAD
+                                 Sicilia Pizzeria
+                                DAVEY'S ICE CREAM
+                                   THE LITTLE OWL
+                                      GARDEN CAFE
+                               BEST ITALIAN PIZZA
+
+---MORE---
+cqlsh:resto_ny> SELECT name,borough FROM Restaurant WHERE id=41569764;
+
+ name    | borough
+---------+----------
+ BACCHUS | BROOKLYN
+
+(1 rows)
+cqlsh:resto_ny> SELECT inspectiondate,grade FROM Inspection WHERE idRestaurant=41569764;
+
+ inspectiondate | grade
+----------------+-------
+     2013-06-27 |  null
+     2013-07-08 |     A
+     2013-12-26 |  null
+     2014-02-05 |     A
+     2014-07-17 |  null
+     2014-08-06 |     A
+     2015-01-08 |     A
+     2016-02-25 |     A
+
+(8 rows)
+cqlsh:resto_ny> SELECT name FROM Restaurant WHERE cuisinetype='French;
+            ...
+cqlsh:resto_ny> SELECT name FROM Restaurant WHERE cuisinetype='French';
+
+ name
+--------------------------------
+                        MATISSE
+                        ALMANAC
+                   TOUT VA BIEN
+                          FELIX
+             CREPES ON COLUMBUS
+               THE BARONESS BAR
+                     THE SIMONE
+                      FP BAKERY
+                  VIN ET FLEURS
+       CAFE BOULUD/BAR PLEIADES
+                        COCOTTE
+                  Bourgeois Pig
+              DELICE & SARRASIN
+               LA TARTE FLAMBEE
+                   JEAN GEORGES
+                     MAISON MAY
+                         DANIEL
+                    SAJU BISTRO
+              LE PAIN QUOTIDIEN
+                     CAFE CLUNY
+                         BIN 71
+                 CREPES CELSTES
+                 JOYCE BAKESHOP
+         THE FOX AND THE CREPES
+                      CAFE LOUP
+                   ROUGE TOMATE
+                    LE PERIGORD
+                 NOGLU NEW YORK
+               BLISS 46  BISTRO
+                       PASCALOU
+                        BUVETTE
+              LE PAIN QUOTIDIEN
+ UNION CLUB OF CITY OF NEW YORK
+                CAFE LUXEMBOURG
+                       TISSERIE
+              LE PAIN QUOTIDIEN
+                      BAGATELLE
+                 PARIS BAGUETTE
+              LE PAIN QUOTIDIEN
+                  CAFE D'ALSACE
+                       KING BEE
+                   LA BERGAMOTE
+         TOCQUEVILLE RESTAURANT
+               BISTRO CHAT NOIR
+                 MADISON BISTRO
+               57TH BELLE HOUSE
+        LA MIRABELLE RESTAURANT
+         LE TRAIN BLEU & B CAFE
+              HUDSON CLEARWATER
+                          CHERI
+                       VAUCLUSE
+               PARDON MY FRENCH
+                 L' ANTAGONISTE
+                 MADAME SOU SOU
+                     THE BOUNTY
+                 DUET BRASSERIE
+                  MAISON KAYSER
+           DIRTY PIERRES BISTRO
+  L'AILE OU LA CUISSE (L'A.O.C)
+                     ABC COCINA
+           FRENCH CAFE GOURMAND
+                 BISTRO VENDOME
+                    LE COQ RICO
+              THE LITTLE PRINCE
+                      LE COUCOU
+                  TURKS & FROGS
+                     MAISON MAY
+                     Le Village
+               DOMAINE WINE BAR
+                         B CAFE
+             LUCIEN RESTAURAUNT
+       SEL ET POIVRE RESTAURANT
+                 PETITE ABEILLE
+                         RAMONA
+                         BOULEY
+                QUATORZE BISTRO
+          BONJOUR CREPES & WINE
+                         CAMAJE
+               CHICKEN PROVENCE
+                      LAFAYETTE
+                  VIVE LA CREPE
+                          ORSAY
+                  CHEZ NAPOLEAN
+                 CHEZ JOSEPHINE
+          LA BONNE SOUPE BISTRO
+           BALTHAZAR RESTAURANT
+                   LA MANGEOIRE
+               LA BOITE EN BOIS
+                     PETIT OVEN
+            CHOKOLAT PATISSERIE
+                    VAN LEEUWEN
+            CANNELLE PATISSERIE
+                      BISTRO SK
+                     MONTMARTRE
+                  VIN SUR VINGT
+              HEADLESS HORSEMAN
+            PETROSSIAN BOUTIQUE
+            BREUKELEN BRASSERIE
+                  GOLDEN CREPES
+                     LE BARATIN
+
+---MORE---
+cqlsh:resto_ny> SELECT name FROM Restaurant WHERE  borough='BROOKLYN' ALLOW FILTERING;
+
+ name
+--------------------------------------------
+                          TJ'S TASTY CORNER
+                             KING'S KITCHEN
+                         LEO'S DELI & GRILL
+                           JIN SUSHI & THAI
+                        CROWN FRIED CHICKEN
+                            BROOKLYN CAFE 1
+                       CRESCENT COFFEE SHOP
+                LA ROYALE BEER BURGER HOUSE
+                         CONNECTICUT MUFFIN
+                        GREENSTREETS SALADS
+                                  THE TOPAZ
+                             LA GUARIDA BAR
+                         MAMA ROZ SOUL FOOD
+                           HONG KONG BAKERY
+                 BROOKLYN BRIDGE GARDEN BAR
+                                THE CANTINE
+                              THE GUMBO BRO
+                          DAVEY'S ICE CREAM
+                        CROWN FRIED CHICKEN
+                                THAI TONY'S
+                               CHINA DRAGON
+                           KNAPP BAGEL CAFE
+                     SCHNITZI SCHNITZEL BAR
+                            INDIGO MURPHY'S
+                    EDDIE JR'S SPORT LOUNGE
+                       EL GRAN MAR DE PLATA
+                               MALAY BAKERY
+                EL NUEVO BARZOLA RESTAURANT
+                         PURITAN RESTAURANT
+                          EL CHARRO POBLANO
+                        HOLIDAY INN EXPRESS
+                                     SUBWAY
+                          BREUCKELEN COLONY
+                                SILENT BARN
+                                     BATATA
+                               WHITE CASTLE
+                          BUBBLE TEA- B.B.Q
+                         RED SUN RESTAURANT
+                                    OUTPOST
+                           ROCCO'S PIZZERIA
+                   SAPPORO JAPANESE CUISINE
+                              CAMILA'S CAFE
+                                 ZOMBIE HUT
+                                     SUBWAY
+                              EAST MET WEST
+                                   BOOMWICH
+                                 MCDONALD'S
+                                        KFC
+                NEW HONG KONG RESTAURANT II
+                                SHAKE SHACK
+                              NABLUS SWEETS
+                                WOLF & LAMB
+                            BARCEY'S COFFEE
+                          KALINA RESTAURANT
+                            ARMANDO'S PIZZA
+                        SING WAH RESTAURANT
+              EL TEQUILERO BAR & RESTAURANT
+                                  KONDITORI
+                           SWEETLEAF COFFEE
+                         NEW ZHANG'S GARDEN
+                                   VAQUEROS
+                         LIU'S SHANGHAI INC
+               LA CEMITA MEXICAN GRILL CORP
+                                COURT ORDER
+                      EL PASO MEXICAN GRILL
+                                   SCOPELLO
+ VETERANS OF FOREIGN WARS POST #107 CANTEEN
+                                      RASOI
+                                   MIRAKUYA
+                               AGRA HEIGHTS
+                                HAAGEN-DAZS
+                                 TYGERSHARK
+             COURT STREET GROCERS HERO SHOP
+                                 MUCHMORE'S
+                             DUNKIN' DONUTS
+                             FAMILY KITCHEN
+                       ANARKALI INDIAN FOOD
+                                        GFC
+        TONY'S PIZZA, JERK CHICKEN AND FISH
+                       PETITE FLEURY BAKERY
+                                    PIQUANT
+                    CHEZ MACOULE RESTAURANT
+                    FOOTPRINTS CAFE EXPRESS
+                                      PANDA
+                             DUNKIN' DONUTS
+                   KINARA INDIAN RESTAURANT
+                         TEPANGO RESTAURANT
+                                   FRANNY'S
+                               FRANKIES 457
+                                   re.union
+                                   JAM ROCK
+                   983 BUSHWICK LIVING ROOM
+                              PROPELLERHEAD
+                              HOPE & ANCHOR
+                                IKHOFI CAFE
+                                   THE VALE
+                         YOSSIS GLATT SUSHI
+                                 BLANK CAFE
+                                   KI SUSHI
+                                     SUBWAY
+
+---MORE---
+cqlsh:resto_ny> SELECT grade,score FROM Inspection WHERE  idRestaurant=41569764 AND score >=10 ALLOW FILTERING;
+
+ grade | score
+-------+-------
+  null |    19
+     A |    10
+
+(2 rows)
+cqlsh:resto_ny> SELECT grade FROM Inspection WHERE  score>30 ALLOW FILTERING;
+
+ grade
+----------------
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+ Not Yet Graded
+           null
+           null
+           null
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+              C
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+           null
+
+---MORE---
+cqlsh:resto_ny> SELECT grade FROM Inspection WHERE  score>30  AND grade IS NOT NULL ALLOW FILTRING;
+SyntaxException: line 1:74 mismatched input 'FILTRING' expecting K_FILTERING (...grade IS NOT NULL ALLOW [FILTRING]...)
+cqlsh:resto_ny> SELECT grade FROM Inspection WHERE  score>30  AND grade IS NOT NULL;
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Unsupported restriction: grade IS NOT NULL"
+cqlsh:resto_ny> SELECT count(*) FROM Inspection WHERE  score>30 ALLOW FILTERING;
+
+ count
+-------
+  8719
+
+(1 rows)
+
+Warnings :
+Aggregation query used without partition key
+
+Read 1692 live rows and 1150 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE score > 30 LIMIT 100 ALLOW FILTERING; token -9005254818837349916 (see tombstone_warn_threshold)
+
+Read 1760 live rows and 1311 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40395343) AND score > 30 LIMIT 100 ALLOW FILTERING; token -8783905518463345714 (see tombstone_warn_threshold)
+
+Read 1556 live rows and 1112 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50003708) AND score > 30 LIMIT 100 ALLOW FILTERING; token -8578752479577948782 (see tombstone_warn_threshold)
+
+Read 1622 live rows and 1135 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41593751) AND score > 30 LIMIT 100 ALLOW FILTERING; token -8381372412328237401 (see tombstone_warn_threshold)
+
+Read 1823 live rows and 1240 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41425806) AND score > 30 LIMIT 100 ALLOW FILTERING; token -8157017526446225809 (see tombstone_warn_threshold)
+
+Read 1833 live rows and 1218 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41643622) AND score > 30 LIMIT 100 ALLOW FILTERING; token -7932629028070408009 (see tombstone_warn_threshold)
+
+Read 1735 live rows and 1288 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41259890) AND score > 30 LIMIT 100 ALLOW FILTERING; token -7743145416248044771 (see tombstone_warn_threshold)
+
+Read 1639 live rows and 1112 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41680586) AND score > 30 LIMIT 100 ALLOW FILTERING; token -7552978425794445383 (see tombstone_warn_threshold)
+
+Read 1649 live rows and 1121 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41232292) AND score > 30 LIMIT 100 ALLOW FILTERING; token -7337947063682969762 (see tombstone_warn_threshold)
+
+Read 1474 live rows and 1053 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50010240) AND score > 30 LIMIT 100 ALLOW FILTERING; token -7151592749273037785 (see tombstone_warn_threshold)
+
+Read 1996 live rows and 1420 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41541625) AND score > 30 LIMIT 100 ALLOW FILTERING; token -6892238677436028750 (see tombstone_warn_threshold)
+
+Read 1672 live rows and 1209 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41692410) AND score > 30 LIMIT 100 ALLOW FILTERING; token -6660189309869880155 (see tombstone_warn_threshold)
+
+Read 1605 live rows and 1162 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41452652) AND score > 30 LIMIT 100 ALLOW FILTERING; token -6478880086082394679 (see tombstone_warn_threshold)
+
+Read 1742 live rows and 1147 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41558563) AND score > 30 LIMIT 100 ALLOW FILTERING; token -6156565775975035291 (see tombstone_warn_threshold)
+
+Read 1783 live rows and 1273 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41319774) AND score > 30 LIMIT 100 ALLOW FILTERING; token -5938753821454263735 (see tombstone_warn_threshold)
+
+Read 1644 live rows and 1145 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41437528) AND score > 30 LIMIT 100 ALLOW FILTERING; token -5730399567904792874 (see tombstone_warn_threshold)
+
+Read 1726 live rows and 1175 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41666300) AND score > 30 LIMIT 100 ALLOW FILTERING; token -5532421775175461403 (see tombstone_warn_threshold)
+
+Read 1706 live rows and 1206 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41308759) AND score > 30 LIMIT 100 ALLOW FILTERING; token -5323748422006207311 (see tombstone_warn_threshold)
+
+Read 1594 live rows and 1189 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50016144) AND score > 30 LIMIT 100 ALLOW FILTERING; token -5126137089399428827 (see tombstone_warn_threshold)
+
+Read 1778 live rows and 1211 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41653049) AND score > 30 LIMIT 100 ALLOW FILTERING; token -4909033079481190591 (see tombstone_warn_threshold)
+
+Read 1663 live rows and 1170 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41477916) AND score > 30 LIMIT 100 ALLOW FILTERING; token -4688002089683288981 (see tombstone_warn_threshold)
+
+Read 1870 live rows and 1223 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50006485) AND score > 30 LIMIT 100 ALLOW FILTERING; token -4432758200582867697 (see tombstone_warn_threshold)
+
+Read 1892 live rows and 1287 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50010453) AND score > 30 LIMIT 100 ALLOW FILTERING; token -4205391091691577975 (see tombstone_warn_threshold)
+
+Read 1830 live rows and 1245 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50015811) AND score > 30 LIMIT 100 ALLOW FILTERING; token -3790759847704141765 (see tombstone_warn_threshold)
+
+Read 1772 live rows and 1171 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41665031) AND score > 30 LIMIT 100 ALLOW FILTERING; token -3543657681668902267 (see tombstone_warn_threshold)
+
+Read 1652 live rows and 1202 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40403830) AND score > 30 LIMIT 100 ALLOW FILTERING; token -3360480293319142574 (see tombstone_warn_threshold)
+
+Read 1472 live rows and 1136 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40941277) AND score > 30 LIMIT 100 ALLOW FILTERING; token -3002020318506803815 (see tombstone_warn_threshold)
+
+Read 1730 live rows and 1184 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50012418) AND score > 30 LIMIT 100 ALLOW FILTERING; token -2785557949796485448 (see tombstone_warn_threshold)
+
+Read 1696 live rows and 1259 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41647012) AND score > 30 LIMIT 100 ALLOW FILTERING; token -2586748618384041206 (see tombstone_warn_threshold)
+
+Read 1758 live rows and 1188 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50019284) AND score > 30 LIMIT 100 ALLOW FILTERING; token -2381531864114900671 (see tombstone_warn_threshold)
+
+Read 1728 live rows and 1245 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41711597) AND score > 30 LIMIT 100 ALLOW FILTERING; token -2002991303905378018 (see tombstone_warn_threshold)
+
+Read 1693 live rows and 1141 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41033693) AND score > 30 LIMIT 100 ALLOW FILTERING; token -1805099091377990926 (see tombstone_warn_threshold)
+
+Read 1592 live rows and 1155 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41390570) AND score > 30 LIMIT 100 ALLOW FILTERING; token -1591477763970522049 (see tombstone_warn_threshold)
+
+Read 1422 live rows and 1009 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41671459) AND score > 30 LIMIT 100 ALLOW FILTERING; token -1426677592949548226 (see tombstone_warn_threshold)
+
+Read 1554 live rows and 1098 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41649377) AND score > 30 LIMIT 100 ALLOW FILTERING; token -1213580381765777420 (see tombstone_warn_threshold)
+
+Read 1905 live rows and 1272 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41707137) AND score > 30 LIMIT 100 ALLOW FILTERING; token -958286155177942581 (see tombstone_warn_threshold)
+
+Read 1872 live rows and 1244 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41461985) AND score > 30 LIMIT 100 ALLOW FILTERING; token -717675223282373584 (see tombstone_warn_threshold)
+
+Read 1530 live rows and 1061 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40849580) AND score > 30 LIMIT 100 ALLOW FILTERING; token -538345761508308045 (see tombstone_warn_threshold)
+
+Read 1893 live rows and 1335 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50001353) AND score > 30 LIMIT 100 ALLOW FILTERING; token -322076827219286156 (see tombstone_warn_threshold)
+
+Read 1706 live rows and 1153 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50046787) AND score > 30 LIMIT 100 ALLOW FILTERING; token -135888585282403636 (see tombstone_warn_threshold)
+
+Read 1781 live rows and 1255 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50013653) AND score > 30 LIMIT 100 ALLOW FILTERING; token 84070587695823123 (see tombstone_warn_threshold)
+
+Read 1774 live rows and 1214 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40400129) AND score > 30 LIMIT 100 ALLOW FILTERING; token 314382694955908952 (see tombstone_warn_threshold)
+
+Read 2073 live rows and 1460 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41619148) AND score > 30 LIMIT 100 ALLOW FILTERING; token 567463002683128240 (see tombstone_warn_threshold)
+
+Read 1595 live rows and 1106 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41649373) AND score > 30 LIMIT 100 ALLOW FILTERING; token 776871778012906613 (see tombstone_warn_threshold)
+
+Read 1976 live rows and 1351 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41449122) AND score > 30 LIMIT 100 ALLOW FILTERING; token 1210884393522051842 (see tombstone_warn_threshold)
+
+Read 2082 live rows and 1475 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50005480) AND score > 30 LIMIT 100 ALLOW FILTERING; token 1468006476924776425 (see tombstone_warn_threshold)
+
+Read 1792 live rows and 1193 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41500338) AND score > 30 LIMIT 100 ALLOW FILTERING; token 1711146626105853146 (see tombstone_warn_threshold)
+
+Read 2041 live rows and 1511 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41141976) AND score > 30 LIMIT 100 ALLOW FILTERING; token 1954696674363996269 (see tombstone_warn_threshold)
+
+Read 1498 live rows and 1014 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41475945) AND score > 30 LIMIT 100 ALLOW FILTERING; token 2134553802056888514 (see tombstone_warn_threshold)
+
+Read 1632 live rows and 1185 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50004339) AND score > 30 LIMIT 100 ALLOW FILTERING; token 2324029936614090472 (see tombstone_warn_threshold)
+
+Read 1979 live rows and 1254 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41713405) AND score > 30 LIMIT 100 ALLOW FILTERING; token 2542376608207260338 (see tombstone_warn_threshold)
+
+Read 1736 live rows and 1183 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41697391) AND score > 30 LIMIT 100 ALLOW FILTERING; token 2758593653617603003 (see tombstone_warn_threshold)
+
+Read 1923 live rows and 1375 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41319906) AND score > 30 LIMIT 100 ALLOW FILTERING; token 3013682879409005558 (see tombstone_warn_threshold)
+
+Read 1530 live rows and 1003 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41609497) AND score > 30 LIMIT 100 ALLOW FILTERING; token 3206480982924144376 (see tombstone_warn_threshold)
+
+Read 1897 live rows and 1287 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41174287) AND score > 30 LIMIT 100 ALLOW FILTERING; token 3443136098345932929 (see tombstone_warn_threshold)
+
+Read 1680 live rows and 1137 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50037452) AND score > 30 LIMIT 100 ALLOW FILTERING; token 3634513037262907624 (see tombstone_warn_threshold)
+
+Read 2014 live rows and 1393 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50003580) AND score > 30 LIMIT 100 ALLOW FILTERING; token 3872871845185577986 (see tombstone_warn_threshold)
+
+Read 2022 live rows and 1299 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41320866) AND score > 30 LIMIT 100 ALLOW FILTERING; token 4113852456947619249 (see tombstone_warn_threshold)
+
+Read 1745 live rows and 1233 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41112617) AND score > 30 LIMIT 100 ALLOW FILTERING; token 4302025327846871720 (see tombstone_warn_threshold)
+
+Read 1734 live rows and 1201 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40861669) AND score > 30 LIMIT 100 ALLOW FILTERING; token 4506235886975780552 (see tombstone_warn_threshold)
+
+Read 2049 live rows and 1421 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41250710) AND score > 30 LIMIT 100 ALLOW FILTERING; token 4782974326389824220 (see tombstone_warn_threshold)
+
+Read 1764 live rows and 1185 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41693620) AND score > 30 LIMIT 100 ALLOW FILTERING; token 4992000196775633136 (see tombstone_warn_threshold)
+
+Read 1722 live rows and 1166 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41372373) AND score > 30 LIMIT 100 ALLOW FILTERING; token 5202784348848441933 (see tombstone_warn_threshold)
+
+Read 2032 live rows and 1367 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41423266) AND score > 30 LIMIT 100 ALLOW FILTERING; token 5647186293395423108 (see tombstone_warn_threshold)
+
+Read 1939 live rows and 1302 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41625323) AND score > 30 LIMIT 100 ALLOW FILTERING; token 5887939392105184603 (see tombstone_warn_threshold)
+
+Read 1695 live rows and 1151 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40859175) AND score > 30 LIMIT 100 ALLOW FILTERING; token 6106302916000814066 (see tombstone_warn_threshold)
+
+Read 1924 live rows and 1333 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50045017) AND score > 30 LIMIT 100 ALLOW FILTERING; token 6351271959714494598 (see tombstone_warn_threshold)
+
+Read 1653 live rows and 1168 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40626416) AND score > 30 LIMIT 100 ALLOW FILTERING; token 6579457631705901361 (see tombstone_warn_threshold)
+
+Read 1817 live rows and 1255 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41629759) AND score > 30 LIMIT 100 ALLOW FILTERING; token 6807845728044411723 (see tombstone_warn_threshold)
+
+Read 1742 live rows and 1236 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40396267) AND score > 30 LIMIT 100 ALLOW FILTERING; token 7025271234723713823 (see tombstone_warn_threshold)
+
+Read 1916 live rows and 1299 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50035946) AND score > 30 LIMIT 100 ALLOW FILTERING; token 7257355666277463585 (see tombstone_warn_threshold)
+
+Read 1714 live rows and 1137 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41629883) AND score > 30 LIMIT 100 ALLOW FILTERING; token 7463666926930108287 (see tombstone_warn_threshold)
+
+Read 1631 live rows and 1136 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(40609872) AND score > 30 LIMIT 100 ALLOW FILTERING; token 7637616717518909867 (see tombstone_warn_threshold)
+
+Read 1582 live rows and 1100 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41624694) AND score > 30 LIMIT 100 ALLOW FILTERING; token 7838738649970060342 (see tombstone_warn_threshold)
+
+Read 1756 live rows and 1178 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41719364) AND score > 30 LIMIT 100 ALLOW FILTERING; token 8063841647323174813 (see tombstone_warn_threshold)
+
+Read 1592 live rows and 1127 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41561516) AND score > 30 LIMIT 100 ALLOW FILTERING; token 8243700841962018252 (see tombstone_warn_threshold)
+
+Read 1525 live rows and 1108 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50004276) AND score > 30 LIMIT 100 ALLOW FILTERING; token 8414516013538750401 (see tombstone_warn_threshold)
+
+Read 1562 live rows and 1077 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41706396) AND score > 30 LIMIT 100 ALLOW FILTERING; token 8611150329276787430 (see tombstone_warn_threshold)
+
+Read 1686 live rows and 1188 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(41699792) AND score > 30 LIMIT 100 ALLOW FILTERING; token 8815721123075806524 (see tombstone_warn_threshold)
+
+Read 1732 live rows and 1211 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50045729) AND score > 30 LIMIT 100 ALLOW FILTERING; token 9017160522054926136 (see tombstone_warn_threshold)
+
+Read 1534 live rows and 1059 tombstone cells for query SELECT score FROM resto_ny.inspection WHERE token(idrestaurant) >= token(50035385) AND score > 30 LIMIT 100 ALLOW FILTERING; token 9191673543425791625 (see tombstone_warn_threshold)
+
+cqlsh:resto_ny>
+
+
+
+
+
+
+

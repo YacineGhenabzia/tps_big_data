@@ -1,0 +1,9 @@
+C:\Users\XPRISTO>docker cp E:\tp_bigdata\cassanra_tp\restaurants.csv mon-cassandra:/
+Successfully copied 2.11MB to mon-cassandra:/
+
+C:\Users\XPRISTO>docker cp E:\tp_bigdata\cassanra_tp\restaurants_inspections.csv mon-cassandra:/
+Successfully copied 82.5MB to mon-cassandra:/
+
+C:\Users\XPRISTO>docker ps
+CONTAINER ID   IMAGE       COMMAND                  CREATED             STATUS             PORTS                                                       NAMES
+4ea9b5abf9b6   cassandra   "docker-entrypoint.s…"   About an hour ago   Up About an hour   7000-7001/tcp, 7199/tcp, 9160/tcp, 0.0.0.0:9042->9042/tcp   mon-cassandra
