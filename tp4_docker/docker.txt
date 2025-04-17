@@ -1,0 +1,39 @@
+docker build -t my-python-ana .
+
+
+docker login
+docker tag my-python-ana yacine/my-python-ana
+docker push yacine/my-python-ana
+
+docker pull yacine/my-python-ana
+
+docker run -d --name container1 yacine/my-python-ana
+docker run -d --name container2 yacine/my-python-ana
+docker run -d --name container3 yacine/my-python-ana
+
+
+docker network create tp3_network                  
+
+docker network connect tp3_network container1         
+docker network connect tp3_network container2
+docker network connect tp3_network container3
+
+docker run -d -p 8080:80 --name container1 yacine/my-python-ana
+docker run -d -p 8081:80 --name container2 yacine/my-python-ana
+docker run -d -p 8082:80 --name container3 yacine/my-python-ana 
+docker ps                                          
+
+CONTAINER ID   IMAGE                 COMMAND            CREATED      STATUS         PORTS                  NAMES     
+feb5516dd93a   yacine/my-python-ana   "python file.py"   6 days ago   Up 4 seconds   0.0.0.0:8080->80/tcp   container1
+9d9c2165fea0   yacine/my-python-ana   "python file.py"   6 days ago   Up 3 seconds   0.0.0.0:8082->80/tcp   container3
+c35063e1236f   yacine/my-python-ana   "python file.py"   6 days ago   Up 2 seconds   0.0.0.0:8081->80/tcp   container2
+
+
+
+
+docker images
+REPOSITORY                     TAG       IMAGE ID       CREATED        SIZE  
+yacine/my-python-ana            latest    6b6f5fb45e99   6 days ago     1.31GB
+my-python-ana                  latest    144934dd0b09   6 days ago     1.31GB
+docker/lsp                     golang    c7a4e070dc57   6 weeks ago    158MB
+docker/labs-vscode-installer   0.0.9     e2ad35612109   5 months ago   53.8MB
